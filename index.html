@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback SaaS Platform | Premium</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="container" id="mainContainer" style="position: relative;">
+        <button id="masterBypassBtn" class="master-bypass-btn" title="Modo Maestro">🕵️</button>
+        <header>
+            <div class="logo-wrapper">
+                <img src="" alt="" id="brandLogo" class="official-logo" style="max-height: 80px; width: auto; object-fit: contain;">
+            </div>
+            <h1>¡Queremos escucharte!</h1>
+            <p class="subtitle">
+                Ayúdanos a mejorar tu experiencia en:<br>
+                <strong id="display_store">Cargando sucursal...</strong> • <strong id="display_area">...</strong>
+            </p>
+        </header>
+
+        <form id="feedbackForm">
+            <!-- Metadata Oculta -->
+            <input type="hidden" id="id_qr" name="id_qr" value="QR123">
+            <input type="hidden" id="tienda_id" name="tienda_id" value="">
+            <input type="hidden" id="area_id" name="area_id" value="">
+
+            <!-- 1. Escala de satisfacción (Pregunta Universal) -->
+            <div class="question-group">
+                <label>1. ¿Cómo calificaría el trato y amabilidad de la persona que le atendió hoy?</label>
+                <div class="satisfaction-grid">
+                    <button type="button" class="emoji-btn" data-value="1">
+                        <span>😠</span>
+                        <small>Muy malo</small>
+                    </button>
+                    <button type="button" class="emoji-btn" data-value="2">
+                        <span>😟</span>
+                        <small>Malo</small>
+                    </button>
+                    <button type="button" class="emoji-btn" data-value="3">
+                        <span>😐</span>
+                        <small>Regular</small>
+                    </button>
+                    <button type="button" class="emoji-btn" data-value="4">
+                        <span>🙂</span>
+                        <small>Bueno</small>
+                    </button>
+                    <button type="button" class="emoji-btn" data-value="5">
+                        <span>😁</span>
+                        <small>Excelente</small>
+                    </button>
+                </div>
+                <input type="hidden" name="satisfaccion" id="satisfaccionInput" required>
+            </div>
+
+            <!-- 2. Pregunta dinámica (se cargará desde Area_Preguntas) -->
+            <div class="question-group" id="dynamicQuestionContainer" style="display: none;">
+                <label id="dynamicQuestionLabel"></label>
+                <div class="options-grid" id="dynamicQuestionOptions">
+                    <!-- Se llenará dinámicamente con JS -->
+                </div>
+                <input type="hidden" name="respuesta_pregunta_2" id="dynamicQuestionInput">
+            </div>
+
+            <!-- 3. Detractor Information (Se muestra si califica <= 2) -->
+            <div id="detractorSection"
+                style="display: none; border-top: 1px solid #f1f5f9; padding-top: 1.5rem; margin-top: 1.5rem;">
+                <div class="question-group">
+                    <label>¿Cómo podemos mejorar? Por favor cuéntanos más:</label>
+                    <textarea id="extraInfo" name="comentario" placeholder="Describe tu experiencia..."
+                        rows="3"></textarea>
+                </div>
+                <div class="question-group">
+                    <label>📱 Tu WhatsApp (opcional):</label>
+                    <input type="text" id="whatsapp" placeholder="Ej: 5512345678">
+                </div>
+                <div class="question-group">
+                    <label>✉️ Tu Correo (opcional):</label>
+                    <input type="email" id="email" placeholder="ejemplo@correo.com">
+                </div>
+            </div>
+
+            <!-- Botón de envío -->
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <div class="loader"></div>
+                <span>Enviar opinión</span>
+            </button>
+        </form>
+
+        <div id="successMessage" class="success-card" style="display: none;">
+            <span class="success-icon">✨</span>
+            <h2>¡Muchas gracias!</h2>
+            <p class="subtitle">Valoramos mucho tu tiempo. Tu aporte nos ayuda a ser mejores para ti.</p>
+        </div>
+
+        <div id="cooldownMessage" class="success-card" style="display: none;">
+            <span class="success-icon">🕒</span>
+            <h2>¡Gracias por tu entusiasmo!</h2>
+            <p class="subtitle">Ya recibimos tu feedback recientemente. Tu opinión es muy valiosa para nosotros.</p>
+        </div>
+
+        <div style="margin-top: 2rem; text-align: center; color: #94a3b8; font-size: 0.7rem; opacity: 0.6;">
+            <p><span id="brandNameFooter">Brand</span> © 2026 • v1.4 (Master Mode)</p>
+            <p id="device_info" style="font-size: 0.5rem; margin-top: 5px;">Cargando ID...</p>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
