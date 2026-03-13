@@ -1,9 +1,12 @@
-// Configuración de Supabase (Nueva URL para proyecto SaaS)
-const supabaseUrl = window.tenantConfig.supabaseUrl || 'REPLACE_WITH_SUPABASE_URL';
-const supabaseKey = window.tenantConfig.supabaseKey || 'REPLACE_WITH_SUPABASE_ANON_KEY';
+// ─── Supabase Configuration ──────────────────────────────────────────────────
+// IANPS Universal Feedback Hub
+const supabaseUrl = 'https://qdbosheknbgyqhtoxmfv.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkYm9zaGVrbmJneXFodG94bWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMzU4MzAsImV4cCI6MjA4ODkxMTgzMH0.x1QtKn5dXj30gH7e-w31OrkrSBfIQS9hr2Yiq9Rlxik';
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-// Fingerprinting Utility
+let currentTenantId = null;
+
+// ─── Fingerprinting Utility ──────────────────────────────────────────────────
 async function getFingerprint() {
     const components = [
         navigator.userAgent,
@@ -24,7 +27,7 @@ async function getFingerprint() {
     ctx.fillStyle = "#f60";
     ctx.fillRect(125, 1, 62, 20);
     ctx.fillStyle = "#069";
-    ctx.fillText(window.tenantConfig.name + "Fingerprint", 2, 15);
+    ctx.fillText("IANPS_Fingerprint", 2, 15);
     components.push(canvas.toDataURL());
 
     const str = components.join('###');
@@ -37,21 +40,14 @@ async function getFingerprint() {
     return 'ps_' + Math.abs(hash).toString(16);
 }
 
+// ─── Entry Point ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    // 0. Branding Init
-    document.title = window.tenantConfig.name + ' Feedback | Premium';
-    const logoEl = document.getElementById('brandLogo');
-    if (logoEl) { logoEl.src = window.tenantConfig.logoUrl; logoEl.alt = window.tenantConfig.name; }
-    const footerNameEl = document.getElementById('brandNameFooter');
-    if (footerNameEl) footerNameEl.textContent = window.tenantConfig.name;
-
-    // 1. Leer parámetros de la URL (Soporte para t/a y tienda_id/area_id)
     const urlParams = new URLSearchParams(window.location.search);
     let storeId = urlParams.get('t') || urlParams.get('tienda_id') || '';
     let areaId = urlParams.get('a') || urlParams.get('area_id') || '';
     let qrId = urlParams.get('id_qr') || '';
 
-    // PERSISTENCIA: Si están en URL, guardarlos. Si no, recuperarlos de localStorage.
+    // PERSISTENCIA: Si están en URL, guardarlos. Si no, recuperararlos de localStorage.
     if (storeId) localStorage.setItem('ps_store_id', storeId);
     else storeId = localStorage.getItem('ps_store_id') || '';
 
@@ -63,88 +59,114 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('Contexto:', { storeId, areaId, qrId });
 
-    // Validación temprana
     if (!storeId || !areaId) {
-        console.warn('Faltan parámetros de tienda o área');
         document.getElementById('display_store').textContent = '⚠️ Enlace incompleto';
         document.getElementById('display_area').textContent = 'Escanee el QR nuevamente';
+        return;
     }
 
-    let deviceId = '';
-    const feedbackForm = document.getElementById('feedbackForm');
-    const successMessage = document.getElementById('successMessage');
-    const cooldownMessage = document.getElementById('cooldownMessage');
-    const detractorSection = document.getElementById('detractorSection');
-    const deviceInfoEl = document.getElementById('device_info');
+    // 1. Fetch Dynamic Branding & Store Info
+    try {
+        // A. Obtener datos de la tienda y el tenant_id
+        const { data: store, error: storeErr } = await _supabase
+            .from('Tiendas_Catalogo')
+            .select('nombre, tenant_id')
+            .eq('id', storeId)
+            .single();
+
+        if (storeErr || !store) throw new Error('Tienda no encontrada');
+        
+        currentTenantId = store.tenant_id;
+        document.getElementById('display_store').textContent = store.nombre;
+
+        // B. Obtener Branding del Tenant
+        const { data: tenant, error: tenantErr } = await _supabase
+            .from('tenants')
+            .select('name, logo_url, primary_color')
+            .eq('id', currentTenantId)
+            .single();
+
+        if (!tenantErr && tenant) {
+            // Aplicar branding dinámico
+            document.title = `${tenant.name} | Feedback`;
+            const logoEl = document.getElementById('brandLogo');
+            if (logoEl && tenant.logo_url) {
+                logoEl.src = tenant.logo_url;
+                logoEl.alt = tenant.name;
+            }
+            if (document.getElementById('brandNameFooter')) {
+                document.getElementById('brandNameFooter').textContent = tenant.name;
+            }
+            
+            // Aplicar color primario
+            const color = tenant.primary_color || '#3b82f6';
+            document.documentElement.style.setProperty('--primary', color);
+            // También inyectar style tag para sobreescribir botones si es necesario
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .btn-submit { background: ${color} !important; }
+                .option-btn.selected { background: ${color} !important; color: white !important; }
+                .emoji-btn.selected { border-color: ${color} !important; background: ${color}11 !important; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // C. Obtener el área
+        const { data: area } = await _supabase
+            .from('Areas_Catalogo')
+            .select('nombre')
+            .eq('id', areaId)
+            .single();
+        
+        if (area) document.getElementById('display_area').textContent = area.nombre;
+
+        // D. Cargar pregunta dinámica
+        loadDynamicQuestion(areaId);
+
+    } catch (err) {
+        console.error('Error cargando configuración:', err);
+        document.getElementById('display_store').textContent = 'Error de conexión';
+        return;
+    }
 
     // 2. Browser Fingerprinting & Fraud Check
-    deviceId = await getFingerprint();
-    deviceInfoEl.textContent = `Device: ${deviceId}`;
+    const deviceId = await getFingerprint();
+    const deviceInfoEl = document.getElementById('device_info');
+    if (deviceInfoEl) deviceInfoEl.textContent = `Device: ${deviceId}`;
 
     // Master Mode Bypass Setup
     const masterBypassBtn = document.getElementById('masterBypassBtn');
     let isMasterMode = localStorage.getItem('ps_master_mode') === 'active';
+    if (isMasterMode && masterBypassBtn) masterBypassBtn.classList.add('active');
 
-    if (isMasterMode) masterBypassBtn.classList.add('active');
+    if (masterBypassBtn) {
+        masterBypassBtn.addEventListener('click', () => {
+            const pass = prompt('Modo Maestro - Ingrese contraseña:');
+            if (pass === '1972') {
+                localStorage.setItem('ps_master_mode', 'active');
+                isMasterMode = true;
+                masterBypassBtn.classList.add('active');
+                alert('¡Modo Maestro Activado!');
+                window.location.reload();
+            }
+        });
+    }
 
-    masterBypassBtn.addEventListener('click', () => {
-        const pass = prompt('Modo Maestro - Ingrese contraseña:');
-        if (pass === '1972') {
-            localStorage.setItem('ps_master_mode', 'active');
-            isMasterMode = true;
-            masterBypassBtn.classList.add('active');
-            alert('¡Modo Maestro Activado! Bloqueo de 12h desactivado.');
-            // Reload to apply bypass
-            window.location.reload();
-        } else if (pass !== null) {
-            alert('Contraseña incorrecta');
-        }
-    });
-
-    // Local Check
+    // Cooldown Check (12h)
     if (!isMasterMode) {
         const lastSent = localStorage.getItem(`feedback_sent_${storeId}_${areaId}`);
         if (lastSent && (Date.now() - parseInt(lastSent) < 12 * 60 * 60 * 1000)) {
-            feedbackForm.style.display = 'none';
-            cooldownMessage.style.display = 'block';
+            document.getElementById('feedbackForm').style.display = 'none';
+            document.getElementById('cooldownMessage').style.display = 'block';
             return;
         }
     }
 
-    // DB Check
-    if (!isMasterMode) {
-        const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-        const { data: existing } = await _supabase
-            .from('Feedback')
-            .select('id')
-            .eq('device_id', deviceId)
-            .eq('tienda_id', storeId)
-            .eq('area_id', areaId)
-            .eq('tenant_id', window.tenantConfig.id)
-            .gt('created_at', twelveHoursAgo)
-            .limit(1);
-
-        if (existing && existing.length > 0) {
-            feedbackForm.style.display = 'none';
-            cooldownMessage.style.display = 'block';
-            return;
-        }
-    }
-
-    // 3. Cargar nombres reales y pregunta
-    if (storeId) {
-        _supabase.from('Tiendas_Catalogo').select('nombre').eq('id', storeId).eq('tenant_id', window.tenantConfig.id).single()
-            .then(({ data }) => { if (data) document.getElementById('display_store').textContent = data.nombre; });
-    }
-    if (areaId) {
-        _supabase.from('Areas_Catalogo').select('nombre').eq('id', areaId).eq('tenant_id', window.tenantConfig.id).single()
-            .then(({ data }) => { if (data) document.getElementById('display_area').textContent = data.nombre; });
-        loadDynamicQuestion(areaId);
-    }
-
-    // 4. Emojis & Detractor Logic
+    // 3. Form Submission Logic
+    const feedbackForm = document.getElementById('feedbackForm');
     const emojiBtns = document.querySelectorAll('.emoji-btn');
     const satisfaccionInput = document.getElementById('satisfaccionInput');
+    const detractorSection = document.getElementById('detractorSection');
 
     emojiBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -152,8 +174,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.classList.add('selected');
             const val = parseInt(btn.dataset.value);
             satisfaccionInput.value = val;
-
-            // Mostrar sección detractor si <= 2
             if (val <= 2) {
                 detractorSection.style.display = 'block';
                 document.getElementById('extraInfo').required = true;
@@ -164,86 +184,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // 5. Envío del Formulario
     feedbackForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const rating = parseInt(satisfaccionInput.value);
-
-        if (!rating) {
-            alert('Por favor, selecciona una calificación.');
-            return;
-        }
+        if (!rating) { alert('Selecciona una calificación'); return; }
 
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.querySelector('.loader').style.display = 'inline-block';
         submitBtn.querySelector('span').innerText = 'Enviando...';
 
-        const data = {
+        const payload = {
             id_qr: qrId,
             tienda_id: storeId,
             area_id: areaId,
             satisfaccion: rating,
-            satisfaccion: rating,
-            calidad_info: document.getElementById('dynamicQuestionInput')?.value || '', // Safe access
+            calidad_info: document.getElementById('dynamicQuestionInput')?.value || '',
             comentario: document.getElementById('extraInfo')?.value || '',
             device_id: deviceId,
-            tenant_id: window.tenantConfig.id
+            tenant_id: currentTenantId
         };
-        
-        console.log('Enviando datos:', data);
-
-        // Validación de datos críticos antes de enviar
-        if (!data.tienda_id || !data.area_id) {
-            alert('Error: No se identificó la sucursal o área. Por favor escanea el QR nuevamente.');
-            submitBtn.disabled = false;
-            submitBtn.querySelector('.loader').style.display = 'none';
-            submitBtn.querySelector('span').innerText = 'Enviar opinión';
-            return;
-        }
 
         try {
-            // A. Insert Feedback
-            const { data: feedbackData, error } = await _supabase.from('Feedback').insert([data]).select();
+            const { data: feedback, error } = await _supabase.from('Feedback').insert([payload]).select();
             if (error) throw error;
 
-            // B. Create Issue if Detractor
-            if (rating <= 2 && feedbackData && feedbackData.length > 0) {
-                const whatsapp = document.getElementById('whatsapp').value;
-                const email = document.getElementById('email').value;
-                const contactInfo = [
-                    whatsapp && `WhatsApp: ${whatsapp}`,
-                    email && `Email: ${email}`
-                ].filter(Boolean).join(' | ') || 'No proporcionado';
+            if (rating <= 2 && feedback && feedback.length > 0) {
+                const whatsapp = document.getElementById('whatsapp')?.value || '';
+                const email = document.getElementById('email')?.value || '';
+                const contactInfo = [whatsapp, email].filter(Boolean).join(' | ') || 'No proporcionado';
 
                 await _supabase.from('Issues').insert([{
-                    feedback_id: feedbackData[0].id,
+                    feedback_id: feedback[0].id,
                     titulo: `Feedback Crítico: ${rating} Estrellas`,
-                    descripcion: `Comentario: ${data.comentario}\nContacto: ${contactInfo}`,
+                    descripcion: `Comentario: ${payload.comentario}\nContacto: ${contactInfo}`,
                     categoria: 'Servicio',
                     severidad: rating === 1 ? 'Crítica' : 'Alta',
                     tienda_id: storeId,
                     area_id: areaId,
-                    notas: contactInfo,
-                    tenant_id: window.tenantConfig.id
+                    tenant_id: currentTenantId
                 }]);
             }
 
-            // Éxito
             localStorage.setItem(`feedback_sent_${storeId}_${areaId}`, Date.now().toString());
             feedbackForm.style.display = 'none';
-            successMessage.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        } catch (error) {
-            console.error('Error Crítico:', error);
-            
-            let userMsg = 'Hubo un error al enviar tu comentario.';
-            if (error.message) userMsg += `\nDetalle: ${error.message}`;
-            if (error.details) userMsg += `\nInfo: ${error.details}`;
-            
-            alert(userMsg);
-            
+        } catch (err) {
+            console.error('Error enviando feedback:', err);
+            alert('Error al enviar: ' + err.message);
             submitBtn.disabled = false;
             submitBtn.querySelector('.loader').style.display = 'none';
             submitBtn.querySelector('span').innerText = 'Enviar opinión';
@@ -259,7 +248,7 @@ async function loadDynamicQuestion(areaId) {
             .eq('area_id', areaId)
             .eq('numero_pregunta', 2)
             .eq('activa', true)
-            .eq('tenant_id', window.tenantConfig.id)
+            .eq('tenant_id', currentTenantId)
             .single();
 
         if (!data || error) return;
