@@ -1,0 +1,25 @@
+<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dot matrix icon 4x4 -->
+  <rect x="0" y="0" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="9" y="0" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="18" y="0" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="27" y="0" width="7" height="7" rx="1.2" fill="#FF5C3A" opacity="0.25"/>
+
+  <rect x="0" y="9" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="9" y="9" width="7" height="7" rx="1.2" fill="#00C9A7"/>
+  <rect x="18" y="9" width="7" height="7" rx="1.2" fill="#FF5C3A" opacity="0.2"/>
+  <rect x="27" y="9" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+
+  <rect x="0" y="18" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="9" y="18" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="18" y="18" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+  <rect x="27" y="18" width="7" height="7" rx="1.2" fill="#00C9A7" opacity="0.6"/>
+
+  <rect x="0" y="27" width="7" height="7" rx="1.2" fill="#FF5C3A" opacity="0.2"/>
+  <rect x="9" y="27" width="7" height="7" rx="1.2" fill="#FF5C3A" opacity="0.5"/>
+  <rect x="18" y="27" width="7" height="7" rx="1.2" fill="#00C9A7" opacity="0.4"/>
+  <rect x="27" y="27" width="7" height="7" rx="1.2" fill="#FF5C3A"/>
+
+  <!-- Wordmark dark -->
+  <text x="44" y="28" font-family="'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="800" fill="white" letter-spacing="-0.8">retelio</text>
+</svg>
